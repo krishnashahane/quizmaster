@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSIT QuizMaster</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a14;
+    --surface: #0c1628;
+    --surface2: #111f38;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --border: rgba(0,212,255,0.15);
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(124,58,237,0.3);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+  }
+
+  /* ── SCANLINES ── */
+  body::after {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px
+    );
+    pointer-events:none; z-index:0;
+  }
+
+  /* ── FLOATING PARTICLES ── */
+  #particles { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+  .particle {
+    position:absolute; border-radius:50%;
+    animation: float linear infinite;
+    opacity:0;
+  }
+  @keyframes float {
+    0%   { transform:translateY(100vh) scale(0); opacity:0; }
+    10%  { opacity:1; }
+    90%  { opacity:1; }
+    100% { transform:translateY(-100px) scale(1.5); opacity:0; }
+  }
+
+  /* ── WRAPPER ── */
+  #app {
+    position:relative; z-index:2;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding: 20px;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    display:none; width:100%; max-width:860px;
+    animation: screenIn 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+  .screen.active { display:block; }
+  @keyframes screenIn {
+    from { opacity:0; transform:translateY(30px) scale(0.97); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  }
+
+  /* ── LOGO ── */
+  .logo {
+    text-align:center; margin-bottom:40px;
+  }
+  .logo-icon {
+    font-size: 56px; line-height:1;
+    display:block; margin-bottom:10px;
+    filter: drop-shadow(0 0 20px rgba(0,212,255,0.6));
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { filter: drop-shadow(0 0 20px rgba(0,212,255,0.6)); }
+    50%      { filter: drop-shadow(0 0 40px rgba(0,212,255,1)); }
+  }
+  .logo h1 {
+    font-family:'Orbitron', monospace;
+    font-size: clamp(24px,5vw,42px);
+    font-weight:900;
+    letter-spacing:3px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  .logo p {
+    font-size:13px; color:var(--muted); letter-spacing:4px; margin-top:6px;
+    font-family:'Share Tech Mono', monospace;
+    text-transform:uppercase;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding: 14px 28px;
+    border:none; border-radius:10px;
+    font-family:'Rajdhani'; font-size:16px; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase;
+    cursor:pointer; transition:all 0.2s;
+    position:relative; overflow:hidden;
+  }
+  .btn::after {
+    content:''; position:absolute; inset:0;
+    background:rgba(255,255,255,0.1);
+    transform:scaleX(0); transform-origin:left;
+    transition:transform 0.3s;
+  }
+  .btn:hover::after { transform:scaleX(1); }
+  .btn:active { transform:scale(0.97); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0090bb);
+    color:#000; box-shadow: var(--glow);
+  }
+  .btn-primary:hover { box-shadow: 0 0 35px rgba(0,212,255,0.5); }
+
+  .btn-secondary {
+    background: transparent; color:var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn-secondary:hover { background:rgba(0,212,255,0.08); }
+
+  .btn-danger {
+    background: linear-gradient(135deg, var(--danger), #b91c1c);
+    color:#fff;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, var(--success), #059669);
+    color:#fff;
+  }
+
+  .btn-ghost {
+    background:transparent; color:var(--muted);
+    border:1px solid rgba(255,255,255,0.1);
+  }
+  .btn-ghost:hover { color:var(--text); border-color:rgba(255,255,255,0.3); }
+
+  .btn-lg { padding:18px 40px; font-size:18px; border-radius:12px; }
+  .btn-sm { padding:8px 16px; font-size:13px; }
+  .btn-full { width:100%; }
+
+  /* ── HOME SCREEN ── */
+  .topic-grid {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+    gap:16px; margin:30px 0;
+  }
+  .topic-card {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:24px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition:all 0.25s;
+    position:relative; overflow:hidden;
+  }
+  .topic-card::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, transparent, rgba(0,212,255,0.05));
+    opacity:0; transition:opacity 0.3s;
+  }
+  .topic-card:hover { transform:translateY(-4px); border-color:var(--accent); box-shadow:var(--glow); }
+  .topic-card:hover::before { opacity:1; }
+  .topic-card.selected {
+    border-color:var(--accent); background:rgba(0,212,255,0.08);
+    box-shadow:var(--glow);
+  }
+  .topic-card .topic-icon { font-size:32px; margin-bottom:10px; display:block; }
+  .topic-card .topic-name {
+    font-family:'Orbitron'; font-size:11px; font-weight:700;
+    letter-spacing:1px; color:var(--accent);
+  }
+  .topic-card .topic-count {
+    font-size:12px; color:var(--muted); margin-top:4px;
+    font-family:'Share Tech Mono';
+  }
+  .topic-card .topic-check {
+    position:absolute; top:8px; right:8px;
+    background:var(--accent); color:#000;
+    width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:bold;
+    opacity:0; transform:scale(0);
+    transition:all 0.2s;
+  }
+  .topic-card.selected .topic-check { opacity:1; transform:scale(1); }
+
+  /* ── CONFIG ROW ── */
+  .config-row {
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin:20px 0;
+  }
+  @media(max-width:600px) { .config-row { grid-template-columns:1fr; } }
+
+  .config-item label {
+    display:block; font-size:11px; color:var(--muted);
+    letter-spacing:2px; text-transform:uppercase;
+    font-family:'Share Tech Mono'; margin-bottom:8px;
+  }
+  .config-item select, .config-item input {
+    width:100%; padding:12px 16px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; color:var(--text);
+    font-family:'Rajdhani'; font-size:15px;
+    outline:none; transition:border-color 0.2s;
+    -webkit-appearance:none;
+  }
+  .config-item select:focus, .config-item input:focus {
+    border-color:var(--accent);
+  }
+
+  .section-title {
+    font-family:'Orbitron'; font-size:13px; font-weight:700;
+    letter-spacing:3px; color:var(--muted); text-transform:uppercase;
+    margin-bottom:12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-title::after {
+    content:''; flex:1; height:1px;
+    background:linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+    margin-bottom:24px;
+  }
+  @media(max-width:500px) { .stats-row { grid-template-columns:1fr 1fr; } }
+  .stat-box {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:16px; text-align:center;
+  }
+  .stat-box .stat-val {
+    font-family:'Orbitron'; font-size:22px; font-weight:900;
+    color:var(--accent);
+  }
+  .stat-box .stat-lbl {
+    font-size:11px; color:var(--muted); letter-spacing:1px;
+    font-family:'Share Tech Mono'; margin-top:2px;
+  }
+
+  /* ── QUIZ SCREEN ── */
+  .quiz-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:24px; flex-wrap:wrap; gap:12px;
+  }
+  .quiz-meta {
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .badge {
+    padding:6px 12px; border-radius:20px;
+    font-family:'Share Tech Mono'; font-size:12px; font-weight:500;
+    border:1px solid; letter-spacing:1px;
+  }
+  .badge-cyan  { color:var(--accent); border-color:rgba(0,212,255,0.3); background:rgba(0,212,255,0.08); }
+  .badge-purple{ color:#a78bfa; border-color:rgba(124,58,237,0.3); background:rgba(124,58,237,0.08); }
+  .badge-amber { color:var(--accent3); border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.08); }
+  .badge-green { color:var(--success); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.08); }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-bottom:28px; }
+  .progress-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px;
+  }
+  .progress-label { font-family:'Share Tech Mono'; font-size:12px; color:var(--muted); }
+  .progress-steps { font-family:'Orbitron'; font-size:13px; color:var(--accent); }
+  .progress-bar {
+    height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;
+    position:relative;
+  }
+  .progress-fill {
+    height:100%; border-radius:3px;
+    background:linear-gradient(90deg, var(--accent2), var(--accent));
+    transition:width 0.5s cubic-bezier(0.22,1,0.36,1);
+    position:relative;
+  }
+  .progress-fill::after {
+    content:''; position:absolute; right:0; top:50%;
+    transform:translateY(-50%);
+    width:10px; height:10px; border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 10px var(--accent);
+  }
+
+  /* ── TIMER ── */
+  .timer-wrap {
+    display:flex; align-items:center; gap:10px;
+  }
+  .timer-ring {
+    position:relative; width:52px; height:52px;
+  }
+  .timer-ring svg {
+    position:absolute; inset:0; transform:rotate(-90deg);
+  }
+  .timer-ring circle {
+    fill:none; stroke-width:4; stroke-linecap:round;
+    transition:stroke-dashoffset 1s linear, stroke 0.5s;
+  }
+  .timer-ring .ring-bg { stroke:var(--surface2); }
+  .timer-ring .ring-fg { stroke:var(--accent); }
+  .timer-val {
+    position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-size:13px; font-weight:700;
+    color:var(--accent);
+  }
+
+  /* ── QUESTION ── */
+  .question-card {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:14px; padding:30px; margin-bottom:24px;
+    position:relative;
+  }
+  .q-category {
+    font-family:'Share Tech Mono'; font-size:11px; color:var(--accent);
+    letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;
+  }
+  .q-text {
+    font-size:clamp(16px,3vw,21px); font-weight:600;
+    line-height:1.5; color:var(--text);
+  }
+  .q-number {
+    position:absolute; top:-14px; left:20px;
+    font-family:'Orbitron'; font-size:11px; font-weight:700;
+    color:var(--accent2); letter-spacing:2px;
+    background:var(--surface);
+    padding:4px 12px; border-radius:10px;
+    border:1px solid rgba(124,58,237,0.3);
+  }
+
+  /* ── OPTIONS ── */
+  .options-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:12px; margin-bottom:24px;
+  }
+  @media(max-width:560px) { .options-grid { grid-template-columns:1fr; } }
+
+  .option-btn {
+    position:relative;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:12px; padding:16px 20px;
+    text-align:left; cursor:pointer;
+    transition:all 0.25s;
+    display:flex; align-items:center; gap:14px;
+    overflow:hidden;
+  }
+  .option-btn::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:var(--accent); transform:scaleY(0);
+    transition:transform 0.2s; border-radius:0 2px 2px 0;
+  }
+  .option-btn:hover:not(.disabled):not(.correct):not(.wrong) {
+    border-color:var(--accent);
+    background:rgba(0,212,255,0.06);
+    transform:translateX(3px);
+  }
+  .option-btn:hover:not(.disabled):not(.correct):not(.wrong)::before { transform:scaleY(1); }
+
+  .option-letter {
+    width:34px; height:34px; border-radius:8px;
+    background:var(--surface); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-size:13px; font-weight:700;
+    color:var(--muted); flex-shrink:0;
+    transition:all 0.2s;
+  }
+  .option-text {
+    font-size:15px; font-weight:500; color:var(--text); line-height:1.4;
+    flex:1;
+  }
+  .option-icon {
+    margin-left:auto; font-size:18px; opacity:0;
+    transition:all 0.2s; flex-shrink:0;
+  }
+
+  /* Answer states */
+  .option-btn.selected {
+    border-color:var(--accent); background:rgba(0,212,255,0.08);
+  }
+  .option-btn.selected .option-letter {
+    background:var(--accent); color:#000; border-color:var(--accent);
+  }
+  .option-btn.correct {
+    border-color:var(--success); background:rgba(16,185,129,0.12);
+    animation: correctPop 0.4s ease;
+  }
+  .option-btn.correct .option-letter {
+    background:var(--success); color:#fff; border-color:var(--success);
+  }
+  .option-btn.correct .option-icon { opacity:1; color:var(--success); }
+  @keyframes correctPop {
+    0%   { transform:scale(1); }
+    40%  { transform:scale(1.03); }
+    100% { transform:scale(1); }
+  }
+  .option-btn.wrong {
+    border-color:var(--danger); background:rgba(239,68,68,0.10);
+    animation: shake 0.4s ease;
+  }
+  .option-btn.wrong .option-letter {
+    background:var(--danger); color:#fff; border-color:var(--danger);
+  }
+  .option-btn.wrong .option-icon { opacity:1; color:var(--danger); }
+  @keyframes shake {
+    0%,100% { transform:translateX(0); }
+    25% { transform:translateX(-6px); }
+    75% { transform:translateX(6px); }
+  }
+  .option-btn.disabled { cursor:not-allowed; pointer-events:none; }
+
+  /* ── EXPLANATION ── */
+  .explanation-box {
+    background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.25);
+    border-radius:12px; padding:18px;
+    margin-bottom:20px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .explanation-box .exp-label {
+    font-family:'Share Tech Mono'; font-size:11px; color:#a78bfa;
+    letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .explanation-box p { font-size:14px; color:#c4b5fd; line-height:1.6; }
+
+  /* ── ACTION ROW ── */
+  .action-row {
+    display:flex; justify-content:space-between; align-items:center;
+    gap:12px; flex-wrap:wrap;
+  }
+  .action-left { display:flex; gap:10px; }
+
+  /* ── STREAK ── */
+  .streak-bar {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .streak-dot {
+    width:24px; height:24px; border-radius:6px;
+    background:var(--surface2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; transition:all 0.3s;
+  }
+  .streak-dot.correct { background:rgba(16,185,129,0.2); border-color:var(--success); }
+  .streak-dot.wrong   { background:rgba(239,68,68,0.2);  border-color:var(--danger); }
+  .streak-dot.skip    { background:rgba(245,158,11,0.2);  border-color:var(--accent3); }
+
+  /* ── LIFELINES ── */
+  .lifelines {
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;
+    align-items:center;
+  }
+  .lifeline-lbl {
+    font-family:'Share Tech Mono'; font-size:11px; color:var(--muted);
+    letter-spacing:2px; margin-right:4px;
+  }
+  .lifeline-btn {
+    display:flex; align-items:center; gap:6px;
+    padding:8px 14px; border-radius:8px;
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); cursor:pointer;
+    font-family:'Rajdhani'; font-size:13px; font-weight:600;
+    transition:all 0.2s;
+  }
+  .lifeline-btn:hover:not(.used) { border-color:var(--accent3); color:var(--accent3); }
+  .lifeline-btn.used { opacity:0.35; cursor:not-allowed; text-decoration:line-through; }
+  .lifeline-btn .ll-icon { font-size:16px; }
+  .lifeline-btn .ll-count {
+    font-family:'Orbitron'; font-size:10px; font-weight:700;
+    color:var(--accent3); margin-left:2px;
+  }
+
+  /* ── RESULT SCREEN ── */
+  .result-hero {
+    text-align:center; padding:30px 0 10px;
+  }
+  .result-emoji {
+    font-size:80px; display:block; margin-bottom:16px;
+    animation: resultBounce 0.6s cubic-bezier(0.22,1,0.36,1);
+  }
+  @keyframes resultBounce {
+    from { transform:scale(0) rotate(-20deg); opacity:0; }
+    to   { transform:scale(1) rotate(0); opacity:1; }
+  }
+  .result-title {
+    font-family:'Orbitron'; font-size:clamp(24px,5vw,36px);
+    font-weight:900; margin-bottom:8px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  .result-subtitle { font-size:16px; color:var(--muted); }
+
+  /* ── SCORE RING ── */
+  .score-section {
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; margin:30px 0;
+  }
+  .score-ring {
+    position:relative; width:160px; height:160px; margin-bottom:20px;
+  }
+  .score-ring svg { transform:rotate(-90deg); }
+  .score-ring circle { fill:none; stroke-width:12; stroke-linecap:round; }
+  .score-ring .sr-bg { stroke:var(--surface2); }
+  .score-ring .sr-fg { transition:stroke-dashoffset 1.5s cubic-bezier(0.22,1,0.36,1); }
+  .score-ring-val {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .score-ring-val .pct {
+    font-family:'Orbitron'; font-size:36px; font-weight:900;
+    color:var(--accent);
+  }
+  .score-ring-val .lbl {
+    font-family:'Share Tech Mono'; font-size:11px; color:var(--muted);
+    letter-spacing:1px;
+  }
+
+  /* ── RESULT STATS ── */
+  .result-stats {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+    margin-bottom:24px;
+  }
+  @media(max-width:560px) { .result-stats { grid-template-columns:1fr 1fr; } }
+  .rs-box {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:12px; padding:20px 12px; text-align:center;
+  }
+  .rs-box .rs-icon { font-size:24px; margin-bottom:8px; display:block; }
+  .rs-box .rs-val {
+    font-family:'Orbitron'; font-size:20px; font-weight:900;
+    color:var(--accent);
+  }
+  .rs-box .rs-lbl {
+    font-size:11px; color:var(--muted); letter-spacing:1px;
+    font-family:'Share Tech Mono'; margin-top:3px;
+  }
+
+  /* ── GRADE ── */
+  .grade-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 24px; border-radius:30px;
+    font-family:'Orbitron'; font-size:16px; font-weight:900;
+    margin-bottom:24px;
+  }
+
+  /* ── REVIEW ── */
+  .review-item {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:12px; padding:20px; margin-bottom:12px;
+    transition:all 0.2s;
+  }
+  .review-item .ri-q {
+    font-size:14px; font-weight:600; margin-bottom:12px; line-height:1.5;
+  }
+  .review-item .ri-answers {
+    display:grid; gap:6px;
+  }
+  .ri-answer {
+    padding:8px 12px; border-radius:8px;
+    font-size:13px; display:flex; align-items:center; gap:8px;
+  }
+  .ri-answer.correct-ans { background:rgba(16,185,129,0.12); color:#6ee7b7; }
+  .ri-answer.wrong-ans   { background:rgba(239,68,68,0.12);  color:#fca5a5; }
+  .ri-answer .ri-icon { font-size:14px; }
+  .ri-category {
+    font-family:'Share Tech Mono'; font-size:11px; color:var(--accent);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+
+  /* ── LEADERBOARD / HIGH SCORES ── */
+  .hs-row {
+    display:flex; align-items:center; gap:14px;
+    padding:12px 16px; border-radius:10px;
+    background:var(--surface2); border:1px solid var(--border);
+    margin-bottom:8px; transition:all 0.2s;
+  }
+  .hs-row:hover { border-color:var(--border); transform:translateX(2px); }
+  .hs-rank {
+    font-family:'Orbitron'; font-size:16px; font-weight:900;
+    width:30px; text-align:center; color:var(--muted);
+  }
+  .hs-rank.gold   { color:#f59e0b; text-shadow:0 0 10px #f59e0b; }
+  .hs-rank.silver { color:#94a3b8; }
+  .hs-rank.bronze { color:#cd7c2a; }
+  .hs-info { flex:1; }
+  .hs-info .hs-name { font-weight:700; font-size:15px; }
+  .hs-info .hs-meta {
+    font-family:'Share Tech Mono'; font-size:11px; color:var(--muted); margin-top:2px;
+  }
+  .hs-score {
+    font-family:'Orbitron'; font-size:18px; font-weight:900;
+    color:var(--accent);
+  }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display:flex; gap:4px; margin-bottom:24px;
+    background:var(--surface2); padding:4px; border-radius:10px;
+    border:1px solid var(--border);
+  }
+  .tab {
+    flex:1; padding:10px; border-radius:8px; border:none;
+    background:transparent; color:var(--muted);
+    font-family:'Rajdhani'; font-size:14px; font-weight:600;
+    letter-spacing:1px; cursor:pointer; transition:all 0.2s;
+  }
+  .tab.active { background:var(--accent); color:#000; }
+
+  /* ── TOAST ── */
+  #toast {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(80px);
+    padding:12px 24px; border-radius:30px;
+    font-family:'Rajdhani'; font-size:15px; font-weight:600;
+    z-index:999; transition:all 0.4s cubic-bezier(0.22,1,0.36,1);
+    pointer-events:none; white-space:nowrap;
+  }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+  #toast.success { background:#10b981; color:#fff; box-shadow:0 8px 24px rgba(16,185,129,0.4); }
+  #toast.error   { background:#ef4444; color:#fff; box-shadow:0 8px 24px rgba(239,68,68,0.4); }
+  #toast.info    { background:var(--accent2); color:#fff; box-shadow:0 8px 24px rgba(124,58,237,0.4); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.7);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:20px;
+    opacity:0; pointer-events:none; transition:opacity 0.3s;
+  }
+  .modal-overlay.show { opacity:1; pointer-events:all; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:32px; max-width:480px; width:100%;
+    transform:scale(0.9); transition:transform 0.3s;
+    position:relative;
+  }
+  .modal-overlay.show .modal { transform:scale(1); }
+  .modal h3 {
+    font-family:'Orbitron'; font-size:20px; font-weight:700;
+    margin-bottom:12px; color:var(--accent);
+  }
+  .modal p { color:var(--muted); font-size:15px; line-height:1.6; margin-bottom:24px; }
+  .modal-actions { display:flex; gap:12px; }
+
+  /* ── LOADING ── */
+  .loader {
+    display:flex; align-items:center; justify-content:center;
+    gap:8px; padding:40px;
+  }
+  .loader-dot {
+    width:10px; height:10px; border-radius:50%;
+    background:var(--accent);
+    animation: loaderPop 1.2s ease-in-out infinite;
+  }
+  .loader-dot:nth-child(2) { animation-delay:0.2s; background:var(--accent2); }
+  .loader-dot:nth-child(3) { animation-delay:0.4s; background:var(--accent3); }
+  @keyframes loaderPop {
+    0%,80%,100% { transform:scale(0.6); opacity:0.4; }
+    40% { transform:scale(1.2); opacity:1; }
+  }
+
+  /* ── CONFETTI ── */
+  #confetti { position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden; }
+  .confetti-piece {
+    position:absolute; width:10px; height:10px;
+    animation:confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    from { transform:translateY(-20px) rotate(0); opacity:1; }
+    to   { transform:translateY(110vh) rotate(720deg); opacity:0; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+  /* ── NAME INPUT ── */
+  .name-input-wrap {
+    display:flex; gap:12px; align-items:center; margin-bottom:24px;
+  }
+  .name-input {
+    flex:1; padding:14px 16px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; color:var(--text);
+    font-family:'Rajdhani'; font-size:16px; outline:none;
+    transition:border-color 0.2s;
+  }
+  .name-input:focus { border-color:var(--accent); }
+  .name-input::placeholder { color:var(--muted); }
+
+  /* ── DIFFICULTY BADGE ── */
+  .diff-easy   { color:var(--success); }
+  .diff-medium { color:var(--accent3); }
+  .diff-hard   { color:var(--danger); }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:480px) {
+    .card { padding:24px 16px; }
+    .quiz-header { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+<div id="confetti"></div>
+<div id="toast"></div>
+
+<!-- QUIT MODAL -->
+<div class="modal-overlay" id="quitModal">
+  <div class="modal">
+    <h3>⚠️ Quit Quiz?</h3>
+    <p>Your progress will be lost. Are you sure you want to exit the current quiz?</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="confirmQuit()">Yes, Quit</button>
+      <button class="btn btn-ghost" onclick="closeModal('quitModal')">Keep Going</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME MODAL -->
+<div class="modal-overlay" id="nameModal">
+  <div class="modal">
+    <h3>🏆 Save Score</h3>
+    <p>Enter your name to save this score to the leaderboard:</p>
+    <input class="name-input" id="playerNameInput" placeholder="Your name..." maxlength="20">
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="saveScore()">Save Score</button>
+      <button class="btn btn-ghost" onclick="closeModal('nameModal'); showScreen('result')">Skip</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ══════════════════════ HOME SCREEN ══════════════════════ -->
+  <div class="screen active" id="homeScreen">
+    <div class="card">
+      <div class="logo">
+        <span class="logo-icon">🖥️</span>
+        <h1>CSIT QUIZMASTER</h1>
+        <p>Computer Science &amp; Information Technology</p>
+      </div>
+
+      <div class="stats-row" id="homeStats">
+        <div class="stat-box">
+          <div class="stat-val" id="statTotal">0</div>
+          <div class="stat-lbl">Quizzes Taken</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statBest">--</div>
+          <div class="stat-lbl">Best Score</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statAvg">--</div>
+          <div class="stat-lbl">Avg Score</div>
+        </div>
+      </div>
+
+      <div class="section-title">Select Topics</div>
+      <div class="topic-grid" id="topicGrid"></div>
+
+      <div class="config-row">
+        <div class="config-item">
+          <label>No. of Questions</label>
+          <select id="questionCount">
+            <option value="5">5 Questions</option>
+            <option value="10" selected>10 Questions</option>
+            <option value="15">15 Questions</option>
+            <option value="20">20 Questions</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <label>Difficulty</label>
+          <select id="difficultySelect">
+            <option value="all">All Levels</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <label>Time per Question</label>
+          <select id="timerSelect">
+            <option value="0">No Timer</option>
+            <option value="15">15 seconds</option>
+            <option value="30" selected>30 seconds</option>
+            <option value="45">45 seconds</option>
+            <option value="60">60 seconds</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-primary btn-lg" onclick="startQuiz()" style="flex:1">
+          ⚡ Start Quiz
+        </button>
+        <button class="btn btn-secondary" onclick="showScreen('leaderboard')">
+          🏆 Leaderboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ QUIZ SCREEN ══════════════════════ -->
+  <div class="screen" id="quizScreen">
+    <div class="card">
+      <!-- Header -->
+      <div class="quiz-header">
+        <div class="quiz-meta">
+          <span class="badge badge-cyan" id="topicBadge">Topic</span>
+          <span class="badge badge-purple" id="diffBadge">Difficulty</span>
+          <span class="badge badge-amber" id="scoreBadge">Score: 0</span>
+        </div>
+        <div class="timer-wrap">
+          <div class="timer-ring" id="timerRing">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle class="ring-bg" cx="26" cy="26" r="20"/>
+              <circle class="ring-fg" id="timerCircle" cx="26" cy="26" r="20"
+                stroke-dasharray="125.66" stroke-dashoffset="0"/>
+            </svg>
+            <div class="timer-val" id="timerVal">--</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('quitModal')">✕ Quit</button>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <span class="progress-label">PROGRESS</span>
+          <span class="progress-steps" id="progressSteps">0 / 0</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div class="streak-bar" id="streakBar"></div>
+
+      <!-- Lifelines -->
+      <div class="lifelines" id="lifelinesRow">
+        <span class="lifeline-lbl">LIFELINES:</span>
+        <button class="lifeline-btn" id="ll-fifty" onclick="useFiftyFifty()">
+          <span class="ll-icon">⚖️</span> 50/50 <span class="ll-count" id="ll-fifty-ct">×1</span>
+        </button>
+        <button class="lifeline-btn" id="ll-skip" onclick="useSkip()">
+          <span class="ll-icon">⏭️</span> Skip <span class="ll-count" id="ll-skip-ct">×2</span>
+        </button>
+        <button class="lifeline-btn" id="ll-hint" onclick="useHint()">
+          <span class="ll-icon">💡</span> Hint <span class="ll-count" id="ll-hint-ct">×2</span>
+        </button>
+      </div>
+
+      <!-- Question -->
+      <div class="question-card" id="questionCard">
+        <div class="q-number" id="qNumber">Q 01</div>
+        <div class="q-category" id="qCategory">Category</div>
+        <div class="q-text" id="qText">Loading...</div>
+      </div>
+
+      <!-- Options -->
+      <div class="options-grid" id="optionsGrid"></div>
+
+      <!-- Explanation -->
+      <div class="explanation-box" id="explanationBox" style="display:none"></div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <div class="action-left">
+          <button class="btn btn-ghost btn-sm" id="bookmarkBtn" onclick="toggleBookmark()">🔖 Bookmark</button>
+        </div>
+        <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none">
+          Next Question →
+        </button>
+        <button class="btn btn-success" id="finishBtn" onclick="finishQuiz()" style="display:none">
+          Finish Quiz ✓
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ RESULT SCREEN ══════════════════════ -->
+  <div class="screen" id="resultScreen">
+    <div class="card">
+      <div class="tab-bar">
+        <button class="tab active" id="tab-summary" onclick="switchTab('summary')">Summary</button>
+        <button class="tab" id="tab-review" onclick="switchTab('review')">Review</button>
+        <button class="tab" id="tab-bookmarks" onclick="switchTab('bookmarks')">Bookmarks</button>
+      </div>
+
+      <!-- SUMMARY TAB -->
+      <div id="tab-content-summary">
+        <div class="result-hero">
+          <span class="result-emoji" id="resultEmoji">🎉</span>
+          <div class="result-title" id="resultTitle">Excellent!</div>
+          <div class="result-subtitle" id="resultSubtitle">You did great!</div>
+        </div>
+
+        <div class="score-section">
+          <div class="score-ring">
+            <svg width="160" height="160" viewBox="0 0 160 160">
+              <circle class="sr-bg" cx="80" cy="80" r="68"/>
+              <circle class="sr-fg" id="scoreCircle" cx="80" cy="80" r="68"
+                stroke-dasharray="427.26" stroke-dashoffset="427.26"/>
+            </svg>
+            <div class="score-ring-val">
+              <span class="pct" id="scorePct">0%</span>
+              <span class="lbl">SCORE</span>
+            </div>
+          </div>
+          <div class="grade-badge" id="gradeBadge">Grade A+</div>
+        </div>
+
+        <div class="result-stats">
+          <div class="rs-box">
+            <span class="rs-icon">✅</span>
+            <div class="rs-val" id="rs-correct">0</div>
+            <div class="rs-lbl">Correct</div>
+          </div>
+          <div class="rs-box">
+            <span class="rs-icon">❌</span>
+            <div class="rs-val" id="rs-wrong">0</div>
+            <div class="rs-lbl">Wrong</div>
+          </div>
+          <div class="rs-box">
+            <span class="rs-icon">⏭️</span>
+            <div class="rs-val" id="rs-skipped">0</div>
+            <div class="rs-lbl">Skipped</div>
+          </div>
+          <div class="rs-box">
+            <span class="rs-icon">⏱️</span>
+            <div class="rs-val" id="rs-time">0s</div>
+            <div class="rs-lbl">Time</div>
+          </div>
+        </div>
+
+        <div class="streak-bar" id="resultStreak" style="margin-bottom:24px"></div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-lg" onclick="restartQuiz()" style="flex:1">
+            🔄 Play Again
+          </button>
+          <button class="btn btn-secondary" onclick="openNameModal()">
+            💾 Save Score
+          </button>
+          <button class="btn btn-ghost" onclick="showScreen('home')">
+            🏠 Home
+          </button>
+        </div>
+      </div>
+
+      <!-- REVIEW TAB -->
+      <div id="tab-content-review" style="display:none">
+        <div id="reviewList"></div>
+        <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="showScreen('home')">🏠 Back to Home</button>
+      </div>
+
+      <!-- BOOKMARKS TAB -->
+      <div id="tab-content-bookmarks" style="display:none">
+        <div id="bookmarkList"></div>
+        <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="showScreen('home')">🏠 Back to Home</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ LEADERBOARD ══════════════════════ -->
+  <div class="screen" id="leaderboardScreen">
+    <div class="card">
+      <div class="logo" style="margin-bottom:24px">
+        <h1 style="font-size:28px">🏆 LEADERBOARD</h1>
+        <p>Top Scores</p>
+      </div>
+      <div id="leaderboardList">
+        <div style="text-align:center;color:var(--muted);padding:40px;font-family:'Share Tech Mono'">
+          No scores yet. Play a quiz to get on the board!
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-full" style="margin-top:16px" onclick="showScreen('home')">← Back to Home</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   QUESTION BANK  (100+ questions, 8 topics)
+═══════════════════════════════════════════════ */
+const QUESTION_BANK = [
+  // ── DATA STRUCTURES ──
+  { id:1, topic:'Data Structures', icon:'🗂️',
+    q:'What is the time complexity of searching in a balanced BST?',
+    opts:['O(n)','O(log n)','O(1)','O(n²)'], ans:1, diff:'easy',
+    exp:'A balanced BST halves the search space at each level, giving O(log n) search time.' },
+  { id:2, topic:'Data Structures', icon:'🗂️',
+    q:'Which data structure uses LIFO (Last In First Out) order?',
+    opts:['Queue','Stack','Linked List','Tree'], ans:1, diff:'easy',
+    exp:'A stack follows LIFO: the last element pushed is the first one popped.' },
+  { id:3, topic:'Data Structures', icon:'🗂️',
+    q:'What is the worst-case time complexity of QuickSort?',
+    opts:['O(n log n)','O(n)','O(n²)','O(log n)'], ans:2, diff:'medium',
+    exp:'QuickSort degrades to O(n²) when the pivot is always the smallest or largest element.' },
+  { id:4, topic:'Data Structures', icon:'🗂️',
+    q:'Which traversal visits nodes in Left → Root → Right order?',
+    opts:['Pre-order','Post-order','In-order','Level-order'], ans:2, diff:'easy',
+    exp:'In-order traversal visits left subtree, root, then right subtree. In a BST this gives sorted output.' },
+  { id:5, topic:'Data Structures', icon:'🗂️',
+    q:'What is a Min-Heap property?',
+    opts:['Parent is always greater','Parent is always smaller','Leaves are always larger','Tree is always full'], ans:1, diff:'medium',
+    exp:'In a Min-Heap, every parent node is less than or equal to its children, with the minimum at the root.' },
+  { id:6, topic:'Data Structures', icon:'🗂️',
+    q:'Which data structure is used for BFS traversal of a graph?',
+    opts:['Stack','Queue','Priority Queue','Deque'], ans:1, diff:'easy',
+    exp:'BFS uses a Queue (FIFO) to explore nodes level by level.' },
+  { id:7, topic:'Data Structures', icon:'🗂️',
+    q:'What is the space complexity of Merge Sort?',
+    opts:['O(1)','O(log n)','O(n)','O(n log n)'], ans:2, diff:'medium',
+    exp:'Merge Sort requires O(n) auxiliary space to hold the merged subarrays.' },
+  { id:8, topic:'Data Structures', icon:'🗂️',
+    q:'A graph with V vertices and E edges. Adjacency matrix space complexity?',
+    opts:['O(V)','O(E)','O(V²)','O(V+E)'], ans:2, diff:'hard',
+    exp:'An adjacency matrix is a V×V 2D array, requiring O(V²) space regardless of edge count.' },
+
+  // ── ALGORITHMS ──
+  { id:9, topic:'Algorithms', icon:'⚙️',
+    q:'Which algorithm is used in Dijkstra\'s shortest path?',
+    opts:['BFS','DFS','Greedy','Divide & Conquer'], ans:2, diff:'medium',
+    exp:'Dijkstra\'s algorithm is a greedy algorithm that always picks the unvisited node with the minimum distance.' },
+  { id:10, topic:'Algorithms', icon:'⚙️',
+    q:'What is the time complexity of Binary Search?',
+    opts:['O(n)','O(n²)','O(log n)','O(n log n)'], ans:2, diff:'easy',
+    exp:'Binary Search repeatedly halves the search space, resulting in O(log n) time complexity.' },
+  { id:11, topic:'Algorithms', icon:'⚙️',
+    q:'Which sorting algorithm is stable and in-place with O(n²) worst case?',
+    opts:['Merge Sort','Quick Sort','Insertion Sort','Heap Sort'], ans:2, diff:'medium',
+    exp:'Insertion Sort is stable (preserves relative order of equal elements), in-place, with O(n²) worst-case.' },
+  { id:12, topic:'Algorithms', icon:'⚙️',
+    q:'Dynamic Programming is mainly used to solve problems with:',
+    opts:['Only loops','Overlapping subproblems','Random inputs','Non-recursive structures'], ans:1, diff:'medium',
+    exp:'DP memoizes solutions to overlapping subproblems, avoiding redundant computation.' },
+  { id:13, topic:'Algorithms', icon:'⚙️',
+    q:'What is the time complexity of Heap Sort?',
+    opts:['O(n)','O(n log n)','O(n²)','O(log n)'], ans:1, diff:'medium',
+    exp:'Heap Sort runs in O(n log n) time in all cases—best, average, and worst.' },
+  { id:14, topic:'Algorithms', icon:'⚙️',
+    q:'Which algorithm finds minimum spanning tree?',
+    opts:['Dijkstra','Floyd-Warshall','Kruskal','Bellman-Ford'], ans:2, diff:'medium',
+    exp:'Kruskal\'s algorithm finds the Minimum Spanning Tree by adding the smallest edges that don\'t form cycles.' },
+
+  // ── NETWORKING ──
+  { id:15, topic:'Networking', icon:'🌐',
+    q:'Which layer of the OSI model handles routing?',
+    opts:['Data Link Layer','Transport Layer','Network Layer','Session Layer'], ans:2, diff:'easy',
+    exp:'The Network Layer (Layer 3) handles logical addressing and routing of packets between networks.' },
+  { id:16, topic:'Networking', icon:'🌐',
+    q:'What does DNS stand for?',
+    opts:['Data Network System','Domain Name System','Digital Network Service','Direct Name Server'], ans:1, diff:'easy',
+    exp:'DNS (Domain Name System) translates human-readable domain names into IP addresses.' },
+  { id:17, topic:'Networking', icon:'🌐',
+    q:'Which protocol is used for secure HTTP communication?',
+    opts:['FTP','SMTP','HTTPS','UDP'], ans:2, diff:'easy',
+    exp:'HTTPS uses TLS/SSL encryption on top of HTTP to secure communications.' },
+  { id:18, topic:'Networking', icon:'🌐',
+    q:'What is the maximum length of an IPv4 address in bits?',
+    opts:['16','32','64','128'], ans:1, diff:'easy',
+    exp:'IPv4 addresses are 32 bits long, written as four 8-bit octets (e.g., 192.168.1.1).' },
+  { id:19, topic:'Networking', icon:'🌐',
+    q:'Which protocol operates at the Transport layer and is connection-oriented?',
+    opts:['UDP','IP','TCP','ICMP'], ans:2, diff:'easy',
+    exp:'TCP provides reliable, ordered, and error-checked delivery of data between applications.' },
+  { id:20, topic:'Networking', icon:'🌐',
+    q:'What is the subnet mask for a /24 network?',
+    opts:['255.0.0.0','255.255.0.0','255.255.255.0','255.255.255.255'], ans:2, diff:'medium',
+    exp:'/24 means 24 bits for the network portion, giving subnet mask 255.255.255.0.' },
+  { id:21, topic:'Networking', icon:'🌐',
+    q:'Which protocol is used to assign IP addresses dynamically?',
+    opts:['ARP','DHCP','RARP','NAT'], ans:1, diff:'easy',
+    exp:'DHCP (Dynamic Host Configuration Protocol) automatically assigns IP addresses to devices.' },
+  { id:22, topic:'Networking', icon:'🌐',
+    q:'What port does HTTPS typically use?',
+    opts:['80','443','8080','22'], ans:1, diff:'easy',
+    exp:'HTTPS uses port 443 by default, while HTTP uses port 80.' },
+
+  // ── DATABASES ──
+  { id:23, topic:'Databases', icon:'🗃️',
+    q:'What does ACID stand for in database transactions?',
+    opts:['Access, Consistency, Isolation, Durability','Atomicity, Consistency, Isolation, Durability','Atomicity, Control, Isolation, Data','Access, Control, Isolation, Data'], ans:1, diff:'medium',
+    exp:'ACID ensures database transactions are reliable: Atomic (all or nothing), Consistent, Isolated, and Durable.' },
+  { id:24, topic:'Databases', icon:'🗃️',
+    q:'Which SQL command is used to remove all rows from a table without deleting the structure?',
+    opts:['DELETE','DROP','TRUNCATE','REMOVE'], ans:2, diff:'easy',
+    exp:'TRUNCATE removes all rows quickly without logging individual row deletions, but keeps the table structure.' },
+  { id:25, topic:'Databases', icon:'🗃️',
+    q:'What is a foreign key?',
+    opts:['A key that encrypts data','A key referencing the primary key of another table','An alternate primary key','A key used for indexing'], ans:1, diff:'easy',
+    exp:'A foreign key is a column that establishes a link between data in two tables by referencing the primary key.' },
+  { id:26, topic:'Databases', icon:'🗃️',
+    q:'What is normalization in databases?',
+    opts:['Increasing data redundancy','Reducing data redundancy and improving data integrity','Encrypting data','Compressing data'], ans:1, diff:'medium',
+    exp:'Normalization organizes data to reduce redundancy and improve data integrity using normal forms (1NF, 2NF, 3NF...).' },
+  { id:27, topic:'Databases', icon:'🗃️',
+    q:'Which is a NoSQL database?',
+    opts:['MySQL','PostgreSQL','MongoDB','SQLite'], ans:2, diff:'easy',
+    exp:'MongoDB is a document-oriented NoSQL database that stores data in flexible JSON-like documents.' },
+  { id:28, topic:'Databases', icon:'🗃️',
+    q:'What is an index in a database?',
+    opts:['A copy of the table','A data structure to speed up retrieval','A type of join','A stored procedure'], ans:1, diff:'easy',
+    exp:'An index is a data structure (like a B-tree) that speeds up row lookups at the cost of additional storage.' },
+  { id:29, topic:'Databases', icon:'🗃️',
+    q:'What SQL join returns only matching rows from both tables?',
+    opts:['LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL OUTER JOIN'], ans:2, diff:'easy',
+    exp:'INNER JOIN returns only the rows where there is a match in both tables.' },
+
+  // ── OPERATING SYSTEMS ──
+  { id:30, topic:'Operating Systems', icon:'💻',
+    q:'What is deadlock in operating systems?',
+    opts:['Process waiting for CPU','Two or more processes stuck waiting for each other','Memory overflow','CPU overload'], ans:1, diff:'medium',
+    exp:'Deadlock occurs when processes each hold a resource and wait for another\'s resource, creating a circular wait.' },
+  { id:31, topic:'Operating Systems', icon:'💻',
+    q:'Which scheduling algorithm causes the convoy effect?',
+    opts:['Round Robin','Shortest Job First','First Come First Serve','Priority Scheduling'], ans:2, diff:'medium',
+    exp:'FCFS causes the convoy effect where short processes wait behind a long-running process.' },
+  { id:32, topic:'Operating Systems', icon:'💻',
+    q:'What is thrashing in OS?',
+    opts:['Excessive CPU usage','Excessive paging causing low throughput','Memory corruption','Disk fragmentation'], ans:1, diff:'hard',
+    exp:'Thrashing happens when a system spends more time swapping pages than executing processes, degrading performance.' },
+  { id:33, topic:'Operating Systems', icon:'💻',
+    q:'Which memory allocation technique avoids external fragmentation?',
+    opts:['Segmentation','Paging','Contiguous Allocation','Fixed Partitioning'], ans:1, diff:'hard',
+    exp:'Paging divides memory into equal-sized frames, eliminating external fragmentation (only internal fragmentation may occur).' },
+  { id:34, topic:'Operating Systems', icon:'💻',
+    q:'What is the purpose of a semaphore?',
+    opts:['Manage file I/O','Control access to shared resources','Schedule processes','Manage memory'], ans:1, diff:'medium',
+    exp:'Semaphores are synchronization primitives that control access to shared resources by multiple processes.' },
+  { id:35, topic:'Operating Systems', icon:'💻',
+    q:'Which page replacement algorithm has the lowest page fault rate theoretically?',
+    opts:['FIFO','LRU','Optimal','Clock'], ans:2, diff:'hard',
+    exp:'The Optimal (OPT) algorithm replaces the page that won\'t be used for the longest time, minimizing page faults.' },
+
+  // ── PROGRAMMING ──
+  { id:36, topic:'Programming', icon:'👨‍💻',
+    q:'What is polymorphism in OOP?',
+    opts:['Multiple inheritance','Ability to take multiple forms','Hiding implementation','Data encapsulation'], ans:1, diff:'easy',
+    exp:'Polymorphism allows objects of different classes to be treated as objects of a common superclass.' },
+  { id:37, topic:'Programming', icon:'👨‍💻',
+    q:'What does the "static" keyword mean in Java/C++?',
+    opts:['Constant value','Belongs to the class not instance','Cannot be overridden','Private access'], ans:1, diff:'medium',
+    exp:'Static members belong to the class itself rather than to any specific instance of the class.' },
+  { id:38, topic:'Programming', icon:'👨‍💻',
+    q:'What is the output of: print(2 ** 3) in Python?',
+    opts:['6','8','9','23'], ans:1, diff:'easy',
+    exp:'In Python, ** is the exponentiation operator. 2 ** 3 = 2³ = 8.' },
+  { id:39, topic:'Programming', icon:'👨‍💻',
+    q:'What is a closure in programming?',
+    opts:['A syntax error','A function with access to its outer scope\'s variables','A class method','A recursive function'], ans:1, diff:'medium',
+    exp:'A closure is a function that "remembers" the variables from its enclosing scope even after the outer function returns.' },
+  { id:40, topic:'Programming', icon:'👨‍💻',
+    q:'What does OOP stand for?',
+    opts:['Object-Oriented Programming','Open-Origin Protocol','Output-Oriented Process','Object-Only Pipeline'], ans:0, diff:'easy',
+    exp:'OOP (Object-Oriented Programming) organizes software design around data (objects) rather than functions and logic.' },
+  { id:41, topic:'Programming', icon:'👨‍💻',
+    q:'Which design pattern ensures a class has only one instance?',
+    opts:['Factory','Observer','Singleton','Decorator'], ans:2, diff:'medium',
+    exp:'The Singleton pattern restricts instantiation of a class to a single object and provides a global access point.' },
+  { id:42, topic:'Programming', icon:'👨‍💻',
+    q:'What is the time complexity of accessing an element in a hash table (average case)?',
+    opts:['O(n)','O(log n)','O(1)','O(n²)'], ans:2, diff:'easy',
+    exp:'Hash tables provide O(1) average-case lookup by using a hash function to map keys directly to indices.' },
+  { id:43, topic:'Programming', icon:'👨‍💻',
+    q:'What is recursion?',
+    opts:['Loop using for','Function calling itself','Class inheriting another','Variable reassignment'], ans:1, diff:'easy',
+    exp:'Recursion is when a function calls itself with a modified argument, with a base case to stop the recursion.' },
+
+  // ── CYBERSECURITY ──
+  { id:44, topic:'Cybersecurity', icon:'🔐',
+    q:'What is SQL injection?',
+    opts:['Inserting SQL rows','Malicious SQL code inserted into queries','Slow SQL queries','SQL syntax error'], ans:1, diff:'easy',
+    exp:'SQL injection is an attack where malicious SQL code is inserted into a query to manipulate the database.' },
+  { id:45, topic:'Cybersecurity', icon:'🔐',
+    q:'What does XSS stand for?',
+    opts:['Cross-Site Scripting','Extreme Security System','Extended Syntax Script','Cross-Server Storage'], ans:0, diff:'easy',
+    exp:'XSS (Cross-Site Scripting) injects malicious client-side scripts into web pages viewed by other users.' },
+  { id:46, topic:'Cybersecurity', icon:'🔐',
+    q:'What is a man-in-the-middle attack?',
+    opts:['Physical server theft','Intercepting communication between two parties','Brute force password attack','DDoS attack'], ans:1, diff:'medium',
+    exp:'A MITM attack secretly intercepts and possibly alters communications between two parties who believe they\'re communicating directly.' },
+  { id:47, topic:'Cybersecurity', icon:'🔐',
+    q:'Which encryption algorithm uses a pair of keys?',
+    opts:['AES','DES','RSA','Blowfish'], ans:2, diff:'medium',
+    exp:'RSA is an asymmetric algorithm using a public key for encryption and a private key for decryption.' },
+  { id:48, topic:'Cybersecurity', icon:'🔐',
+    q:'What is a firewall?',
+    opts:['Antivirus software','Network security system controlling traffic','Encrypted storage','VPN service'], ans:1, diff:'easy',
+    exp:'A firewall monitors and controls incoming/outgoing network traffic based on predefined security rules.' },
+  { id:49, topic:'Cybersecurity', icon:'🔐',
+    q:'What does DDoS stand for?',
+    opts:['Dual Denial of Service','Distributed Denial of Service','Data Destruction of Systems','Direct Disruption of Servers'], ans:1, diff:'easy',
+    exp:'DDoS (Distributed Denial of Service) overwhelms a server with traffic from multiple sources to make it unavailable.' },
+  { id:50, topic:'Cybersecurity', icon:'🔐',
+    q:'What is the purpose of a hash function in security?',
+    opts:['Encryption of data','Verify data integrity','Generate passwords','Key exchange'], ans:1, diff:'medium',
+    exp:'Cryptographic hash functions produce a fixed-size digest used to verify data hasn\'t been tampered with.' },
+
+  // ── AI / ML ──
+  { id:51, topic:'AI & ML', icon:'🤖',
+    q:'What is overfitting in machine learning?',
+    opts:['Model too simple for data','Model performs well on training but poorly on new data','Model with no parameters','Underfitting scenario'], ans:1, diff:'medium',
+    exp:'Overfitting occurs when a model learns training data too well, including noise, reducing generalization ability.' },
+  { id:52, topic:'AI & ML', icon:'🤖',
+    q:'What activation function is commonly used in hidden layers of deep neural networks?',
+    opts:['Sigmoid','Tanh','ReLU','Softmax'], ans:2, diff:'medium',
+    exp:'ReLU (Rectified Linear Unit) is popular because it avoids vanishing gradient problems and is computationally efficient.' },
+  { id:53, topic:'AI & ML', icon:'🤖',
+    q:'What is supervised learning?',
+    opts:['Learning without labels','Learning with labeled training data','Learning by trial and error','Unsupervised clustering'], ans:1, diff:'easy',
+    exp:'Supervised learning trains a model on labeled input-output pairs so it can predict outputs for new inputs.' },
+  { id:54, topic:'AI & ML', icon:'🤖',
+    q:'What does CNN stand for in deep learning?',
+    opts:['Centralized Neural Network','Convolutional Neural Network','Compressed Network Node','Cyclic Neuron Net'], ans:1, diff:'easy',
+    exp:'CNNs use convolutional layers to automatically detect spatial hierarchies of features, ideal for image recognition.' },
+  { id:55, topic:'AI & ML', icon:'🤖',
+    q:'What is gradient descent?',
+    opts:['Algorithm to maximize loss','Optimization algorithm that minimizes loss','Data preprocessing step','Regularization technique'], ans:1, diff:'medium',
+    exp:'Gradient descent iteratively adjusts model parameters in the direction that minimizes the loss function.' },
+  { id:56, topic:'AI & ML', icon:'🤖',
+    q:'Which algorithm is used for classification AND regression?',
+    opts:['K-Means','DBSCAN','Random Forest','PCA'], ans:2, diff:'medium',
+    exp:'Random Forest is an ensemble method using multiple decision trees, applicable to both classification and regression.' },
+  { id:57, topic:'AI & ML', icon:'🤖',
+    q:'What is the purpose of dropout in neural networks?',
+    opts:['Speed up training','Prevent overfitting','Increase model size','Data augmentation'], ans:1, diff:'medium',
+    exp:'Dropout randomly deactivates neurons during training to prevent over-reliance on specific neurons, reducing overfitting.' },
+  { id:58, topic:'AI & ML', icon:'🤖',
+    q:'What is a confusion matrix used for?',
+    opts:['Visualizing neural layers','Evaluating classifier performance','Preprocessing data','Hyperparameter tuning'], ans:1, diff:'easy',
+    exp:'A confusion matrix shows the counts of true/false positives and negatives to evaluate classification model performance.' },
+];
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let state = {
+  selectedTopics: [],
+  questions: [],
+  current: 0,
+  score: 0,
+  correct: 0,
+  wrong: 0,
+  skipped: 0,
+  answers: [],
+  bookmarks: [],
+  startTime: null,
+  elapsed: 0,
+  timerEnabled: false,
+  timerDuration: 30,
+  timerLeft: 30,
+  timerInterval: null,
+  totalTimer: null,
+  lifelines: { fifty: 1, skip: 2, hint: 2 },
+  answered: false,
+  quizConfig: {}
+};
+
+let highScores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
+let globalBookmarks = JSON.parse(localStorage.getItem('csit_bookmarks') || '[]');
+
+/* ═══════════════════════════════════════════
+   TOPICS
+═══════════════════════════════════════════ */
+const topics = [...new Set(QUESTION_BANK.map(q => q.topic))].map(t => ({
+  name: t,
+  icon: QUESTION_BANK.find(q=>q.topic===t).icon,
+  count: QUESTION_BANK.filter(q=>q.topic===t).length
+}));
+
+function initTopicGrid() {
+  const grid = document.getElementById('topicGrid');
+  grid.innerHTML = topics.map(t => `
+    <div class="topic-card" data-topic="${t.name}" onclick="toggleTopic('${t.name}')">
+      <div class="topic-check">✓</div>
+      <span class="topic-icon">${t.icon}</span>
+      <div class="topic-name">${t.name}</div>
+      <div class="topic-count">${t.count} questions</div>
+    </div>
+  `).join('');
+  updateStats();
+}
+
+function toggleTopic(name) {
+  const idx = state.selectedTopics.indexOf(name);
+  if (idx > -1) state.selectedTopics.splice(idx,1);
+  else state.selectedTopics.push(name);
+  document.querySelector(`.topic-card[data-topic="${name}"]`).classList.toggle('selected');
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════ */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const map = { home:'homeScreen', quiz:'quizScreen', result:'resultScreen', leaderboard:'leaderboardScreen' };
+  document.getElementById(map[name] || name).classList.add('active');
+  if (name==='leaderboard') renderLeaderboard();
+  if (name==='home') updateStats();
+  window.scrollTo(0,0);
+}
+
+/* ═══════════════════════════════════════════
+   START QUIZ
+═══════════════════════════════════════════ */
+function startQuiz() {
+  const topics = state.selectedTopics.length > 0 ? state.selectedTopics : null;
+  const diff = document.getElementById('difficultySelect').value;
+  const count = parseInt(document.getElementById('questionCount').value);
+  const timer = parseInt(document.getElementById('timerSelect').value);
+
+  let pool = [...QUESTION_BANK];
+  if (topics) pool = pool.filter(q => topics.includes(q.topic));
+  if (diff !== 'all') pool = pool.filter(q => q.diff === diff);
+
+  if (pool.length === 0) { showToast('No questions match your filters!', 'error'); return; }
+
+  // Shuffle & pick
+  pool.sort(() => Math.random() - 0.5);
+  state.questions = pool.slice(0, Math.min(count, pool.length));
+  state.current = 0; state.score = 0; state.correct = 0;
+  state.wrong = 0; state.skipped = 0; state.answers = [];
+  state.bookmarks = [];
+  state.timerEnabled = timer > 0;
+  state.timerDuration = timer;
+  state.lifelines = { fifty:1, skip:2, hint:2 };
+  state.startTime = Date.now();
+  state.quizConfig = { topics, diff, count, timer };
+
+  showScreen('quiz');
+  renderQuestion();
+}
+
+/* ═══════════════════════════════════════════
+   RENDER QUESTION
+═══════════════════════════════════════════ */
+function renderQuestion() {
+  const q = state.questions[state.current];
+  if (!q) { finishQuiz(); return; }
+  state.answered = false;
+
+  // Meta
+  document.getElementById('qNumber').textContent = `Q ${String(state.current+1).padStart(2,'0')}`;
+  document.getElementById('qCategory').textContent = `${q.icon} ${q.topic} · ${q.diff.toUpperCase()}`;
+  document.getElementById('qText').textContent = q.q;
+  document.getElementById('topicBadge').textContent = q.topic;
+  document.getElementById('diffBadge').textContent = q.diff.toUpperCase();
+  document.getElementById('diffBadge').className = `badge badge-purple diff-${q.diff}`;
+  document.getElementById('scoreBadge').textContent = `Score: ${state.score}`;
+
+  // Progress
+  const pct = (state.current / state.questions.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressSteps').textContent = `${state.current+1} / ${state.questions.length}`;
+
+  // Streak
+  renderStreakBar();
+
+  // Options
+  const optLetters = ['A','B','C','D'];
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = q.opts.map((opt, i) => `
+    <button class="option-btn" id="opt-${i}" onclick="selectOption(${i})">
+      <span class="option-letter">${optLetters[i]}</span>
+      <span class="option-text">${opt}</span>
+      <span class="option-icon">✓</span>
+    </button>
+  `).join('');
+
+  // explanation
+  document.getElementById('explanationBox').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('finishBtn').style.display = 'none';
+
+  // bookmark state
+  const isBookmarked = state.bookmarks.includes(q.id);
+  document.getElementById('bookmarkBtn').textContent = isBookmarked ? '🔖 Bookmarked' : '🔖 Bookmark';
+
+  // Lifelines
+  updateLifelineUI();
+
+  // Timer
+  clearTimers();
+  if (state.timerEnabled) startTimer();
+
+  // Total time
+  if (!state.totalTimer) {
+    state.totalTimer = setInterval(() => { state.elapsed = Math.floor((Date.now()-state.startTime)/1000); }, 1000);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TIMER
+═══════════════════════════════════════════ */
+function startTimer() {
+  state.timerLeft = state.timerDuration;
+  updateTimerUI();
+  state.timerInterval = setInterval(() => {
+    state.timerLeft--;
+    updateTimerUI();
+    if (state.timerLeft <= 0) {
+      clearTimers();
+      if (!state.answered) autoTimeOut();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const circ = document.getElementById('timerCircle');
+  const r = 20, circ_len = 2*Math.PI*r;
+  const ratio = state.timerLeft / state.timerDuration;
+  circ.style.strokeDashoffset = circ_len * (1-ratio);
+  circ.style.stroke = state.timerLeft <= 5 ? 'var(--danger)' : state.timerLeft <= 10 ? 'var(--accent3)' : 'var(--accent)';
+  document.getElementById('timerVal').textContent = state.timerLeft;
+  document.getElementById('timerVal').style.color = state.timerLeft <= 5 ? 'var(--danger)' : 'var(--accent)';
+}
+
+function clearTimers() {
+  if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+}
+
+function autoTimeOut() {
+  if (state.answered) return;
+  state.answered = true;
+  state.skipped++;
+  state.answers.push({ q: state.questions[state.current], chosen: -1, correct: false, timedOut: true });
+  showToast('⏰ Time\'s up!', 'error');
+  lockOptions(-1);
+  showExplanation();
+  showNextButton();
+}
+
+/* ═══════════════════════════════════════════
+   SELECT OPTION
+═══════════════════════════════════════════ */
+function selectOption(i) {
+  if (state.answered) return;
+  state.answered = true;
+  clearTimers();
+  const q = state.questions[state.current];
+  const correct = q.ans === i;
+
+  if (correct) {
+    const pts = q.diff==='easy' ? 10 : q.diff==='medium' ? 20 : 30;
+    if (state.timerEnabled) {
+      const bonus = Math.floor(state.timerLeft / state.timerDuration * 10);
+      state.score += pts + bonus;
+    } else { state.score += pts; }
+    state.correct++;
+    showToast('✅ Correct! +' + (q.diff==='easy'?10:q.diff==='medium'?20:30), 'success');
+  } else {
+    state.wrong++;
+    showToast('❌ Wrong answer!', 'error');
+  }
+  state.answers.push({ q, chosen: i, correct });
+  document.getElementById('scoreBadge').textContent = `Score: ${state.score}`;
+  lockOptions(i);
+  showExplanation();
+  showNextButton();
+}
+
+function lockOptions(chosen) {
+  const q = state.questions[state.current];
+  const btns = document.querySelectorAll('.option-btn');
+  btns.forEach((btn, i) => {
+    btn.classList.add('disabled');
+    if (i === q.ans) { btn.classList.add('correct'); btn.querySelector('.option-icon').textContent = '✓'; }
+    else if (i === chosen && chosen !== q.ans) { btn.classList.add('wrong'); btn.querySelector('.option-icon').textContent = '✗'; }
+  });
+}
+
+function showExplanation() {
+  const q = state.questions[state.current];
+  const box = document.getElementById('explanationBox');
+  box.style.display = 'block';
+  box.innerHTML = `<div class="exp-label">💡 Explanation</div><p>${q.exp}</p>`;
+}
+
+function showNextButton() {
+  const isLast = state.current === state.questions.length - 1;
+  document.getElementById('nextBtn').style.display = isLast ? 'none' : 'inline-flex';
+  document.getElementById('finishBtn').style.display = isLast ? 'inline-flex' : 'none';
+}
+
+/* ═══════════════════════════════════════════
+   STREAK BAR
+═══════════════════════════════════════════ */
+function renderStreakBar() {
+  const bar = document.getElementById('streakBar');
+  const total = state.questions.length;
+  bar.innerHTML = Array.from({length:total}, (_,i) => {
+    let cls = '';
+    if (i < state.answers.length) {
+      const a = state.answers[i];
+      cls = a.timedOut ? 'skip' : a.correct ? 'correct' : 'wrong';
+    }
+    const icon = cls==='correct'?'✓':cls==='wrong'?'✗':cls==='skip'?'⏭':'';
+    return `<div class="streak-dot ${cls}">${icon}</div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   LIFELINES
+═══════════════════════════════════════════ */
+function useFiftyFifty() {
+  if (state.lifelines.fifty <= 0 || state.answered) return;
+  state.lifelines.fifty--;
+  const q = state.questions[state.current];
+  const wrong = [0,1,2,3].filter(i => i !== q.ans);
+  wrong.sort(()=>Math.random()-0.5);
+  const remove = wrong.slice(0,2);
+  remove.forEach(i => {
+    const btn = document.getElementById('opt-'+i);
+    if (btn) { btn.style.opacity='0.2'; btn.style.pointerEvents='none'; }
+  });
+  updateLifelineUI();
+  showToast('⚖️ Two wrong answers removed!', 'info');
+}
+
+function useSkip() {
+  if (state.lifelines.skip <= 0 || state.answered) return;
+  state.lifelines.skip--;
+  state.skipped++;
+  state.answered = true;
+  clearTimers();
+  state.answers.push({ q: state.questions[state.current], chosen: -1, correct: false, skipped: true });
+  updateLifelineUI();
+  showToast('⏭️ Question skipped!', 'info');
+  showNextButton();
+}
+
+function useHint() {
+  if (state.lifelines.hint <= 0 || state.answered) return;
+  state.lifelines.hint--;
+  const q = state.questions[state.current];
+  updateLifelineUI();
+  showToast('💡 ' + q.exp.substring(0,60)+'...', 'info');
+}
+
+function updateLifelineUI() {
+  const ll = state.lifelines;
+  const f = document.getElementById('ll-fifty');
+  const s = document.getElementById('ll-skip');
+  const h = document.getElementById('ll-hint');
+  document.getElementById('ll-fifty-ct').textContent = `×${ll.fifty}`;
+  document.getElementById('ll-skip-ct').textContent = `×${ll.skip}`;
+  document.getElementById('ll-hint-ct').textContent = `×${ll.hint}`;
+  if(ll.fifty<=0) f.classList.add('used'); else f.classList.remove('used');
+  if(ll.skip<=0) s.classList.add('used'); else s.classList.remove('used');
+  if(ll.hint<=0) h.classList.add('used'); else h.classList.remove('used');
+}
+
+/* ═══════════════════════════════════════════
+   NEXT / FINISH
+═══════════════════════════════════════════ */
+function nextQuestion() {
+  state.current++;
+  renderQuestion();
+  window.scrollTo(0,0);
+}
+
+function finishQuiz() {
+  clearTimers();
+  if (state.totalTimer) { clearInterval(state.totalTimer); state.totalTimer = null; }
+  showScreen('result');
+  renderResult();
+}
+
+/* ═══════════════════════════════════════════
+   BOOKMARK
+═══════════════════════════════════════════ */
+function toggleBookmark() {
+  const q = state.questions[state.current];
+  const idx = state.bookmarks.indexOf(q.id);
+  if (idx > -1) {
+    state.bookmarks.splice(idx,1);
+    document.getElementById('bookmarkBtn').textContent = '🔖 Bookmark';
+    showToast('Bookmark removed', 'info');
+  } else {
+    state.bookmarks.push(q.id);
+    document.getElementById('bookmarkBtn').textContent = '🔖 Bookmarked';
+    showToast('🔖 Question bookmarked!', 'success');
+  }
+  // Save globally
+  q.bookmarked = true;
+  const gi = globalBookmarks.findIndex(b => b.id === q.id);
+  if (gi > -1) globalBookmarks.splice(gi,1);
+  else globalBookmarks.push(q);
+  localStorage.setItem('csit_bookmarks', JSON.stringify(globalBookmarks));
+}
+
+/* ═══════════════════════════════════════════
+   RESULT
+═══════════════════════════════════════════ */
+function renderResult() {
+  const total = state.questions.length;
+  const pct = Math.round((state.correct / total) * 100);
+  const time = state.elapsed;
+
+  // Emoji & message
+  let emoji = '😢', title = 'Keep Practicing!', subtitle = 'You\'ll do better next time.';
+  if (pct >= 90) { emoji='🏆'; title='Outstanding!'; subtitle='You\'re a CSIT master!'; }
+  else if (pct >= 75) { emoji='🎉'; title='Excellent!'; subtitle='Great performance!'; }
+  else if (pct >= 60) { emoji='😊'; title='Good Job!'; subtitle='Above average. Keep it up!'; }
+  else if (pct >= 40) { emoji='📚'; title='Fair Attempt'; subtitle='Review the topics and try again.'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSubtitle').textContent = subtitle;
+  document.getElementById('scorePct').textContent = pct + '%';
+  document.getElementById('rs-correct').textContent = state.correct;
+  document.getElementById('rs-wrong').textContent = state.wrong;
+  document.getElementById('rs-skipped').textContent = state.skipped;
+  document.getElementById('rs-time').textContent = formatTime(time);
+
+  // Grade
+  const grade = pct>=90?'S':pct>=80?'A+':pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=40?'D':'F';
+  const gradeColors = {S:'#00d4ff',['A+']:'#10b981',A:'#6ee7b7',B:'#f59e0b',C:'#fb923c',D:'#f87171',F:'#ef4444'};
+  const gb = document.getElementById('gradeBadge');
+  gb.textContent = `Grade ${grade}`;
+  gb.style.background = `${gradeColors[grade]}22`;
+  gb.style.color = gradeColors[grade];
+  gb.style.border = `1px solid ${gradeColors[grade]}44`;
+
+  // Animated ring
+  setTimeout(() => {
+    const sc = document.getElementById('scoreCircle');
+    const circLen = 2*Math.PI*68;
+    const stroke = pct>=75?'var(--success)':pct>=50?'var(--accent3)':'var(--danger)';
+    sc.style.stroke = stroke;
+    sc.style.strokeDashoffset = circLen * (1 - pct/100);
+  }, 200);
+
+  // Streak
+  const rs = document.getElementById('resultStreak');
+  rs.innerHTML = state.answers.map(a => {
+    const cls = a.timedOut ? 'skip' : a.correct ? 'correct' : 'wrong';
+    const icon = cls==='correct'?'✓':cls==='wrong'?'✗':'⏭';
+    return `<div class="streak-dot ${cls}">${icon}</div>`;
+  }).join('');
+
+  // Review
+  renderReview();
+  renderBookmarkTab();
+
+  // Confetti for good scores
+  if (pct >= 75) launchConfetti();
+
+  // Save to stats
+  const scores = JSON.parse(localStorage.getItem('csit_quiz_stats') || '[]');
+  scores.push({ score: state.score, pct, correct: state.correct, total, time: Date.now() });
+  localStorage.setItem('csit_quiz_stats', JSON.stringify(scores));
+  updateStats();
+}
+
+function renderReview() {
+  const list = document.getElementById('reviewList');
+  list.innerHTML = state.answers.map((a,i) => `
+    <div class="review-item">
+      <div class="ri-category">${a.q.icon} ${a.q.topic} · Q${i+1}</div>
+      <div class="ri-q">${a.q.q}</div>
+      <div class="ri-answers">
+        ${a.q.opts.map((opt,j) => {
+          let cls = '';
+          if (j === a.q.ans) cls = 'correct-ans';
+          else if (j === a.chosen && !a.correct) cls = 'wrong-ans';
+          if (!cls) return '';
+          const icon = cls==='correct-ans'?'✓':'✗';
+          return `<div class="ri-answer ${cls}"><span class="ri-icon">${icon}</span> ${opt}</div>`;
+        }).join('')}
+        ${a.timedOut ? '<div class="ri-answer wrong-ans"><span class="ri-icon">⏰</span> Timed out</div>' : ''}
+        ${a.skipped  ? '<div class="ri-answer wrong-ans"><span class="ri-icon">⏭️</span> Skipped</div>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBookmarkTab() {
+  const list = document.getElementById('bookmarkList');
+  const bqs = state.answers.filter(a => state.bookmarks.includes(a.q.id));
+  if (bqs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono">No bookmarks in this session.</div>';
+    return;
+  }
+  list.innerHTML = bqs.map(a => `
+    <div class="review-item">
+      <div class="ri-category">${a.q.icon} ${a.q.topic}</div>
+      <div class="ri-q">${a.q.q}</div>
+      <div class="ri-answer correct-ans"><span class="ri-icon">✓</span> ${a.q.opts[a.q.ans]}</div>
+      <div style="font-size:13px;color:#a78bfa;margin-top:8px">💡 ${a.q.exp}</div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function switchTab(name) {
+  ['summary','review','bookmarks'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t===name);
+    document.getElementById(`tab-content-${t}`).style.display = t===name ? 'block' : 'none';
+  });
+}
+
+/* ═══════════════════════════════════════════
+   LEADERBOARD
+═══════════════════════════════════════════ */
+function renderLeaderboard() {
+  const list = document.getElementById('leaderboardList');
+  const scores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
+  scores.sort((a,b)=>b.score-a.score);
+  if (scores.length===0) {
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono">No scores yet. Play a quiz!</div>';
+    return;
+  }
+  list.innerHTML = scores.slice(0,10).map((s,i) => {
+    const rankCls = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    return `<div class="hs-row">
+      <div class="hs-rank ${rankCls}">${medal || '#'+(i+1)}</div>
+      <div class="hs-info">
+        <div class="hs-name">${s.name}</div>
+        <div class="hs-meta">${s.correct}/${s.total} correct · ${s.pct}% · ${formatTime(s.time_taken)}</div>
+      </div>
+      <div class="hs-score">${s.score}</div>
+    </div>`;
+  }).join('');
+}
+
+function openNameModal() { openModal('nameModal'); }
+
+function saveScore() {
+  const name = document.getElementById('playerNameInput').value.trim() || 'Anonymous';
+  const scores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
+  scores.push({
+    name, score: state.score, pct: Math.round(state.correct/state.questions.length*100),
+    correct: state.correct, total: state.questions.length,
+    time_taken: state.elapsed, date: new Date().toLocaleDateString()
+  });
+  localStorage.setItem('csit_scores', JSON.stringify(scores));
+  closeModal('nameModal');
+  showToast('🏆 Score saved!', 'success');
+  showScreen('result');
+}
+
+/* ═══════════════════════════════════════════
+   HOME STATS
+═══════════════════════════════════════════ */
+function updateStats() {
+  const s = JSON.parse(localStorage.getItem('csit_quiz_stats') || '[]');
+  document.getElementById('statTotal').textContent = s.length;
+  if (s.length > 0) {
+    document.getElementById('statBest').textContent = Math.max(...s.map(x=>x.pct)) + '%';
+    const avg = Math.round(s.reduce((a,b)=>a+b.pct,0)/s.length);
+    document.getElementById('statAvg').textContent = avg + '%';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════ */
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function confirmQuit() { closeModal('quitModal'); clearTimers(); if(state.totalTimer){clearInterval(state.totalTimer);state.totalTimer=null;} showScreen('home'); }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+let toastTimeout;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ═══════════════════════════════════════════
+   CONFETTI
+═══════════════════════════════════════════ */
+function launchConfetti() {
+  const c = document.getElementById('confetti');
+  const colors = ['#00d4ff','#7c3aed','#f59e0b','#10b981','#ef4444','#fff'];
+  for (let i=0; i<60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    const color = colors[Math.floor(Math.random()*colors.length)];
+    const shape = Math.random()>0.5 ? '50%' : '2px';
+    el.style.cssText = `
+      left:${Math.random()*100}%;
+      width:${6+Math.random()*10}px;
+      height:${6+Math.random()*10}px;
+      background:${color};
+      border-radius:${shape};
+      animation-duration:${2+Math.random()*3}s;
+      animation-delay:${Math.random()*1.5}s;
+    `;
+    c.appendChild(el);
+  }
+  setTimeout(() => c.innerHTML='', 6000);
+}
+
+/* ═══════════════════════════════════════════
+   PARTICLES
+═══════════════════════════════════════════ */
+function initParticles() {
+  const container = document.getElementById('particles');
+  const colors = ['rgba(0,212,255,0.4)','rgba(124,58,237,0.4)','rgba(245,158,11,0.3)'];
+  for (let i=0; i<20; i++) {
+    const p = document.createElement('div');
+    p.className='particle';
+    const size = 2+Math.random()*4;
+    p.style.cssText=`
+      left:${Math.random()*100}%;
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration:${8+Math.random()*12}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    container.appendChild(p);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   RESTART
+═══════════════════════════════════════════ */
+function restartQuiz() {
+  showScreen('home');
+  setTimeout(() => startQuiz(), 100);
+}
+
+/* ═══════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════ */
+function formatTime(s) {
+  if (s < 60) return s + 's';
+  return Math.floor(s/60) + 'm ' + (s%60) + 's';
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+initParticles();
+initTopicGrid();
+</script>
+</body>
+</html>
