@@ -154,4 +154,3 @@ Build a scalable, data-driven MCQ system that improves learning efficiency throu
 License:-
 
 GPL-3.0
-```
