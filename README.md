@@ -1,5 +1,6 @@
-📘 MCQ Quiz Platform
-🚀 Overview
+## 📘 MCQ Quiz Platform
+
+# 🚀 Overview
 
 A fast, minimal MCQ practice platform for students with instant feedback, performance analysis, and weak topic detection.
 
