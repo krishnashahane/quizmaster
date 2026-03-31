@@ -149,3 +149,9 @@ Personalized recommendations
 ⚡ Goal
 
 Build a scalable, data-driven MCQ system that improves learning efficiency through continuous feedback and performance insights.
+
+```
+License:-
+
+GPL-3.0
+```
