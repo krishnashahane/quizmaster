@@ -1311,8 +1311,32 @@ let state = {
   quizConfig: {}
 };
 
-let highScores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
-let globalBookmarks = JSON.parse(localStorage.getItem('csit_bookmarks') || '[]');
+// Browser storage is optional: malformed data or restricted storage must not break the quiz.
+function readStoredArray(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredArray(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Rehydrate bookmarks from trusted question-bank entries rather than trusting stored objects.
+let globalBookmarks = readStoredArray('csit_bookmarks')
+  .filter(entry => entry && Number.isInteger(entry.id))
+  .map(entry => QUESTION_BANK.find(question => question.id === entry.id))
+  .filter(Boolean);
 
 /* ═══════════════════════════════════════════
    TOPICS
@@ -1371,11 +1395,16 @@ function startQuiz() {
   if (pool.length === 0) { showToast('No questions match your filters!', 'error'); return; }
 
   // Shuffle & pick
-  pool.sort(() => Math.random() - 0.5);
+  // Fisher–Yates shuffle avoids the bias of sorting with a random comparator.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
   state.questions = pool.slice(0, Math.min(count, pool.length));
   state.current = 0; state.score = 0; state.correct = 0;
   state.wrong = 0; state.skipped = 0; state.answers = [];
-  state.bookmarks = [];
+  state.bookmarks = globalBookmarks.map(question => question.id);
+  state.elapsed = 0;
   state.timerEnabled = timer > 0;
   state.timerDuration = timer;
   state.lifelines = { fifty:1, skip:2, hint:2 };
@@ -1428,7 +1457,7 @@ function renderQuestion() {
   document.getElementById('finishBtn').style.display = 'none';
 
   // bookmark state
-  const isBookmarked = state.bookmarks.includes(q.id);
+  const isBookmarked = globalBookmarks.some(bookmark => bookmark.id === q.id);
   document.getElementById('bookmarkBtn').textContent = isBookmarked ? '🔖 Bookmarked' : '🔖 Bookmark';
 
   // Lifelines
@@ -1521,6 +1550,7 @@ function lockOptions(chosen) {
     btn.classList.add('disabled');
     if (i === q.ans) { btn.classList.add('correct'); btn.querySelector('.option-icon').textContent = '✓'; }
     else if (i === chosen && chosen !== q.ans) { btn.classList.add('wrong'); btn.querySelector('.option-icon').textContent = '✗'; }
+    btn.disabled = true;
   });
 }
 
@@ -1566,7 +1596,10 @@ function useFiftyFifty() {
   const remove = wrong.slice(0,2);
   remove.forEach(i => {
     const btn = document.getElementById('opt-'+i);
-    if (btn) { btn.style.opacity='0.2'; btn.style.pointerEvents='none'; }
+    if (btn) {
+      btn.style.opacity = '0.2';
+      btn.disabled = true;
+    }
   });
   updateLifelineUI();
   showToast('⚖️ Two wrong answers removed!', 'info');
@@ -1579,6 +1612,10 @@ function useSkip() {
   state.answered = true;
   clearTimers();
   state.answers.push({ q: state.questions[state.current], chosen: -1, correct: false, skipped: true });
+  document.querySelectorAll('.option-btn').forEach(button => {
+    button.disabled = true;
+    button.classList.add('disabled');
+  });
   updateLifelineUI();
   showToast('⏭️ Question skipped!', 'info');
   showNextButton();
@@ -1615,6 +1652,9 @@ function nextQuestion() {
 }
 
 function finishQuiz() {
+  state.elapsed = state.startTime
+    ? Math.max(0, Math.floor((Date.now() - state.startTime) / 1000))
+    : 0;
   clearTimers();
   if (state.totalTimer) { clearInterval(state.totalTimer); state.totalTimer = null; }
   showScreen('result');
@@ -1636,12 +1676,14 @@ function toggleBookmark() {
     document.getElementById('bookmarkBtn').textContent = '🔖 Bookmarked';
     showToast('🔖 Question bookmarked!', 'success');
   }
-  // Save globally
-  q.bookmarked = true;
-  const gi = globalBookmarks.findIndex(b => b.id === q.id);
-  if (gi > -1) globalBookmarks.splice(gi,1);
-  else globalBookmarks.push(q);
-  localStorage.setItem('csit_bookmarks', JSON.stringify(globalBookmarks));
+  // Persist canonical question-bank objects only.
+  const gi = globalBookmarks.findIndex(bookmark => bookmark.id === q.id);
+  if (gi > -1) {
+    globalBookmarks.splice(gi, 1);
+  } else {
+    globalBookmarks.push(q);
+  }
+  writeStoredArray('csit_bookmarks', globalBookmarks);
 }
 
 /* ═══════════════════════════════════════════
@@ -1702,9 +1744,9 @@ function renderResult() {
   if (pct >= 75) launchConfetti();
 
   // Save to stats
-  const scores = JSON.parse(localStorage.getItem('csit_quiz_stats') || '[]');
+  const scores = readStoredArray('csit_quiz_stats');
   scores.push({ score: state.score, pct, correct: state.correct, total, time: Date.now() });
-  localStorage.setItem('csit_quiz_stats', JSON.stringify(scores));
+  writeStoredArray('csit_quiz_stats', scores);
   updateStats();
 }
 
@@ -1732,17 +1774,17 @@ function renderReview() {
 
 function renderBookmarkTab() {
   const list = document.getElementById('bookmarkList');
-  const bqs = state.answers.filter(a => state.bookmarks.includes(a.q.id));
-  if (bqs.length === 0) {
-    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono">No bookmarks in this session.</div>';
+  if (globalBookmarks.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono">No saved bookmarks yet. Bookmark a question during a quiz.</div>';
     return;
   }
-  list.innerHTML = bqs.map(a => `
+  // These records are canonical objects from QUESTION_BANK, not untrusted localStorage data.
+  list.innerHTML = globalBookmarks.map(q => `
     <div class="review-item">
-      <div class="ri-category">${a.q.icon} ${a.q.topic}</div>
-      <div class="ri-q">${a.q.q}</div>
-      <div class="ri-answer correct-ans"><span class="ri-icon">✓</span> ${a.q.opts[a.q.ans]}</div>
-      <div style="font-size:13px;color:#a78bfa;margin-top:8px">💡 ${a.q.exp}</div>
+      <div class="ri-category">${q.icon} ${q.topic}</div>
+      <div class="ri-q">${q.q}</div>
+      <div class="ri-answer correct-ans"><span class="ri-icon">✓</span> ${q.opts[q.ans]}</div>
+      <div style="font-size:13px;color:#a78bfa;margin-top:8px">💡 ${q.exp}</div>
     </div>
   `).join('');
 }
@@ -1762,39 +1804,71 @@ function switchTab(name) {
 ═══════════════════════════════════════════ */
 function renderLeaderboard() {
   const list = document.getElementById('leaderboardList');
-  const scores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
-  scores.sort((a,b)=>b.score-a.score);
-  if (scores.length===0) {
-    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono">No scores yet. Play a quiz!</div>';
+  const scores = readStoredArray('csit_scores')
+    .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry))
+    .map(entry => ({
+      name: typeof entry.name === 'string' ? entry.name.slice(0, 20) : 'Anonymous',
+      score: Number.isFinite(Number(entry.score)) && Number(entry.score) >= 0 ? Number(entry.score) : 0,
+      correct: Number.isFinite(Number(entry.correct)) && Number(entry.correct) >= 0 ? Number(entry.correct) : 0,
+      total: Number.isFinite(Number(entry.total)) && Number(entry.total) >= 0 ? Number(entry.total) : 0,
+      pct: Number.isFinite(Number(entry.pct)) && Number(entry.pct) >= 0 ? Number(entry.pct) : 0,
+      time_taken: Number.isFinite(Number(entry.time_taken)) && Number(entry.time_taken) >= 0 ? Number(entry.time_taken) : 0
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  list.replaceChildren();
+  if (scores.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;color:var(--muted);padding:40px;font-family:Share Tech Mono';
+    empty.textContent = 'No scores yet. Play a quiz!';
+    list.appendChild(empty);
     return;
   }
-  list.innerHTML = scores.slice(0,10).map((s,i) => {
-    const rankCls = i===0?'gold':i===1?'silver':i===2?'bronze':'';
-    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    return `<div class="hs-row">
-      <div class="hs-rank ${rankCls}">${medal || '#'+(i+1)}</div>
-      <div class="hs-info">
-        <div class="hs-name">${s.name}</div>
-        <div class="hs-meta">${s.correct}/${s.total} correct · ${s.pct}% · ${formatTime(s.time_taken)}</div>
-      </div>
-      <div class="hs-score">${s.score}</div>
-    </div>`;
-  }).join('');
+
+  scores.slice(0, 10).forEach((score, index) => {
+    const row = document.createElement('div');
+    row.className = 'hs-row';
+
+    const rank = document.createElement('div');
+    rank.className = 'hs-rank' + (index === 0 ? ' gold' : index === 1 ? ' silver' : index === 2 ? ' bronze' : '');
+    rank.textContent = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '#' + (index + 1);
+
+    const info = document.createElement('div');
+    info.className = 'hs-info';
+    const name = document.createElement('div');
+    name.className = 'hs-name';
+    name.textContent = score.name;
+
+    const meta = document.createElement('div');
+    meta.className = 'hs-meta';
+    meta.textContent = `${score.correct}/${score.total} correct · ${score.pct}% · ${formatTime(score.time_taken)}`;
+
+    const points = document.createElement('div');
+    points.className = 'hs-score';
+    points.textContent = String(score.score);
+
+    info.append(name, meta);
+    row.append(rank, info, points);
+    list.appendChild(row);
+  });
 }
 
 function openNameModal() { openModal('nameModal'); }
 
 function saveScore() {
   const name = document.getElementById('playerNameInput').value.trim() || 'Anonymous';
-  const scores = JSON.parse(localStorage.getItem('csit_scores') || '[]');
+  const scores = readStoredArray('csit_scores');
   scores.push({
     name, score: state.score, pct: Math.round(state.correct/state.questions.length*100),
     correct: state.correct, total: state.questions.length,
     time_taken: state.elapsed, date: new Date().toLocaleDateString()
   });
-  localStorage.setItem('csit_scores', JSON.stringify(scores));
+  const saved = writeStoredArray('csit_scores', scores);
   closeModal('nameModal');
-  showToast('🏆 Score saved!', 'success');
+  showToast(
+    saved ? '🏆 Score saved!' : 'Browser storage is unavailable; score was not saved.',
+    saved ? 'success' : 'error'
+  );
   showScreen('result');
 }
 
@@ -1802,12 +1876,23 @@ function saveScore() {
    HOME STATS
 ═══════════════════════════════════════════ */
 function updateStats() {
-  const s = JSON.parse(localStorage.getItem('csit_quiz_stats') || '[]');
+  const s = readStoredArray('csit_quiz_stats');
   document.getElementById('statTotal').textContent = s.length;
   if (s.length > 0) {
-    document.getElementById('statBest').textContent = Math.max(...s.map(x=>x.pct)) + '%';
-    const avg = Math.round(s.reduce((a,b)=>a+b.pct,0)/s.length);
-    document.getElementById('statAvg').textContent = avg + '%';
+    const percentages = s
+      .filter(entry => entry && Number.isFinite(Number(entry.pct)))
+      .map(entry => Math.max(0, Math.min(100, Number(entry.pct))));
+    if (percentages.length > 0) {
+      document.getElementById('statBest').textContent = Math.max(...percentages) + '%';
+      document.getElementById('statAvg').textContent =
+        Math.round(percentages.reduce((sum, value) => sum + value, 0) / percentages.length) + '%';
+    } else {
+      document.getElementById('statBest').textContent = '—';
+      document.getElementById('statAvg').textContent = '—';
+    }
+  } else {
+    document.getElementById('statBest').textContent = '—';
+    document.getElementById('statAvg').textContent = '—';
   }
 }
 
